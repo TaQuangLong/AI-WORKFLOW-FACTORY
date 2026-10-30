@@ -7,4 +7,5 @@ dist
 .env.*
 coverage
 apps/web/dist
+apps/web/.vite
 apps/server/dist
