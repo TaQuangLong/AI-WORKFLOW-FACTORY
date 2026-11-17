@@ -15,7 +15,7 @@ Open **http://127.0.0.1:5173** (Vite binds IPv4).
 
 Or both: `pnpm dev` (server defaults to cwd; pick adapter via `AWF_ADAPTER` / `--adapter`).
 
-Draft generation in v1 may use a **heuristic** step list when not calling an LLM; switch the adapter to `cursor` for real CLI runs.
+Chat drafting calls the selected Adapter’s `draftWorkflow` (Cursor by default; Fake in CI). The CLI must return a fenced JSON Workflow. If that fails, a **labeled heuristic fallback** is used (shown in Chat and the UI header) — never silently presented as Cursor-drafted.
 
 ## Verify
 

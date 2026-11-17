@@ -146,15 +146,26 @@ export function App() {
         <div className="meta">
           {snap?.projectRoot ?? "…"} · adapter={snap?.adapterId ?? "…"} · run=
           {snap?.run.state ?? "idle"}
+          {snap?.draftSource === "heuristic"
+            ? " · draft=heuristic fallback"
+            : snap?.draftSource === "adapter"
+              ? " · draft=adapter"
+              : ""}
         </div>
       </header>
 
       <section className="panel">
         <h2>Chat</h2>
         <p className="hint">
-          Say what you want to do. A Draft Workflow appears for editing — nothing
-          runs until you Accept.
+          Say what you want to do. The selected adapter drafts a Workflow (fenced
+          JSON) for editing — nothing runs until you Accept. If the adapter fails,
+          a labeled heuristic fallback is used.
         </p>
+        {snap?.draftSource === "heuristic" && (
+          <p className="hint" style={{ color: "var(--warn)" }}>
+            Current Draft used heuristic fallback (not Cursor/adapter-drafted).
+          </p>
+        )}
         <div className="chat-log">
           {chat.map((m) => (
             <div key={m.id} className={`msg ${m.role}`}>

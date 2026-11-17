@@ -3,6 +3,8 @@ import type {
   AdapterResult,
   AdapterStartInput,
   CliAdapter,
+  DraftWorkflowInput,
+  DraftWorkflowResult,
 } from "./types.js";
 
 abstract class StubAdapter implements CliAdapter {
@@ -17,6 +19,12 @@ abstract class StubAdapter implements CliAdapter {
       `[${this.id}] stub only — configure a real binary later. skill=${input.skillId}`,
     );
     return { exitCode: 1, signal: null };
+  }
+
+  async draftWorkflow(_input: DraftWorkflowInput): Promise<DraftWorkflowResult> {
+    throw new Error(
+      `[${this.id}] draftWorkflow stub — not implemented; use Cursor or Fake`,
+    );
   }
 
   async stop(): Promise<void> {

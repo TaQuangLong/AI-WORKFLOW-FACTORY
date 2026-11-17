@@ -2,6 +2,7 @@ import {
   WorkflowStore,
   heuristicDraft,
   nextPendingAfterStop,
+  parseWorkflowJsonFromText,
   updateStep,
   type ChatMessage,
   type Step,
@@ -20,6 +21,7 @@ import {
 import { randomUUID } from "node:crypto";
 
 export type RunState = "idle" | "running" | "stopped";
+export type DraftSource = "adapter" | "heuristic";
 
 export class WorkflowRuntime {
   readonly store: WorkflowStore;
@@ -30,6 +32,7 @@ export class WorkflowRuntime {
   private runState: RunState = "idle";
   private activeStepId: string | null = null;
   private stopRequested = false;
+  private lastDraftSource: DraftSource | null = null;
 
   constructor(
     projectRoot: string,
@@ -84,6 +87,7 @@ export class WorkflowRuntime {
     current: Workflow | null;
     chat: ChatMessage[];
     run: { state: RunState; activeStepId: string | null };
+    draftSource: DraftSource | null;
   }> {
     return {
       projectRoot: this.projectRoot,
@@ -92,6 +96,7 @@ export class WorkflowRuntime {
       current: await this.store.loadCurrent(),
       chat: await this.store.loadChat(),
       run: { state: this.runState, activeStepId: this.activeStepId },
+      draftSource: this.lastDraftSource,
     };
   }
 
@@ -122,6 +127,7 @@ export class WorkflowRuntime {
     user: ChatMessage;
     assistant: ChatMessage;
     draft: Workflow;
+    draftSource: DraftSource;
   }> {
     const user: ChatMessage = {
       id: randomUUID(),
@@ -132,21 +138,44 @@ export class WorkflowRuntime {
     await this.store.appendChat(user);
     this.emit({ type: "chat", message: user });
 
-    let draft = heuristicDraft(content);
+    let draft: Workflow;
+    let draftSource: DraftSource;
+    try {
+      const { text } = await this.adapter.draftWorkflow({
+        projectRoot: this.projectRoot,
+        goal: content,
+      });
+      draft = parseWorkflowJsonFromText(text);
+      draft = {
+        ...draft,
+        goal: draft.goal || content,
+        updatedAt: new Date().toISOString(),
+      };
+      draftSource = "adapter";
+    } catch {
+      draft = heuristicDraft(content);
+      draftSource = "heuristic";
+    }
+
+    this.lastDraftSource = draftSource;
     draft.steps = await annotateBlockedStatuses(this.skills, draft.steps);
     draft = await this.store.saveDraft(draft);
     this.emit({ type: "workflow", kind: "draft", workflow: draft });
 
+    const sourceNote =
+      draftSource === "heuristic"
+        ? " (heuristic fallback — adapter draft failed or returned invalid JSON; not Cursor-drafted)"
+        : ` (via ${this.adapterId} adapter)`;
     const assistant: ChatMessage = {
       id: randomUUID(),
       role: "assistant",
-      content: `Draft ready with ${draft.steps.length} steps. Edit, Tick/Ignore, then Accept Draft before Run. Blocked steps need a Skill created first.`,
+      content: `Draft ready with ${draft.steps.length} steps${sourceNote}. Edit, Tick/Ignore, then Accept Draft before Run. Blocked steps need a Skill created first.`,
       createdAt: new Date().toISOString(),
     };
     await this.store.appendChat(assistant);
     this.emit({ type: "chat", message: assistant });
 
-    return { user, assistant, draft };
+    return { user, assistant, draft, draftSource };
   }
 
   async saveDraft(workflow: Workflow): Promise<Workflow> {
