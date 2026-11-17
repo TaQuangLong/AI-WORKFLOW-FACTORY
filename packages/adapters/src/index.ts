@@ -3,6 +3,8 @@ export type {
   AdapterResult,
   AdapterStartInput,
   CliAdapter,
+  DraftWorkflowInput,
+  DraftWorkflowResult,
 } from "./types.js";
 export { FakeAdapter } from "./fake.js";
 export { CursorAdapter } from "./cursor.js";

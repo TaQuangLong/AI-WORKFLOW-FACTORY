@@ -37,4 +37,5 @@ export interface Snapshot {
   current: Workflow | null;
   chat: ChatMessage[];
   run: { state: string; activeStepId: string | null };
+  draftSource?: "adapter" | "heuristic" | null;
 }

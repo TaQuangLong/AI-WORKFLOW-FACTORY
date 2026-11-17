@@ -4,9 +4,11 @@ import { createServer } from "./http.js";
 import type { AdapterId } from "@awf/adapters";
 
 function argValue(flag: string): string | undefined {
-  const idx = process.argv.indexOf(flag);
+  // pnpm may insert a lone "--" before forwarded args; ignore it.
+  const argv = process.argv.filter((a) => a !== "--");
+  const idx = argv.indexOf(flag);
   if (idx === -1) return undefined;
-  return process.argv[idx + 1];
+  return argv[idx + 1];
 }
 
 const projectRoot = path.resolve(
