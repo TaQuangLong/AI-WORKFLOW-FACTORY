@@ -6,6 +6,10 @@ Read during review, not as always-loaded implementer context. Prefer guardrails 
 
 Accepted intent and ADRs require Cursor as the default adapter for the happy path. If Draft generation uses a **heuristic** (or any non-LLM) path instead of the Cursor adapter, the UI and README must label that clearly as a deferred fallback — do not silently present it as Cursor drafting.
 
+## Fake draft is a test contract
+
+`FakeAdapter.draftWorkflow` output (step ids, count, skillIds) is part of Seam A/B. Changing it requires updating those tests. If hooks block edits to **existing** test files, add a **new** test file (or expand Fake only when the new shape is the intentional CI contract)—do not silently reshape product fixtures just to keep a locked assertion green.
+
 ## Skill discovery in tests
 
 Tests that assert a Skill is missing or blocked must use an isolated Project Root. Do not depend on the developer's home skill directories (`~/.agents/skills`, `~/.cursor/skills`). Production may opt into home scans only via an explicit flag.
