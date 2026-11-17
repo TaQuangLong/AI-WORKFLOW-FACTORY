@@ -6,14 +6,16 @@ Localhost control surface for Skill-aligned agent Workflows: Chat → Draft → 
 
 ```bash
 pnpm install
-pnpm --filter @awf/server start -- --project "$PWD" --adapter fake --port 8787
+pnpm start:server -- --project "$PWD" --adapter fake --port 8787
 # other terminal
 pnpm --filter @awf/web dev
 ```
 
-Open http://127.0.0.1:5173
+Open **http://127.0.0.1:5173** (Vite binds IPv4).
 
-Or both: `pnpm dev` (server defaults to cwd + fake adapter).
+Or both: `pnpm dev` (server defaults to cwd; pick adapter via `AWF_ADAPTER` / `--adapter`).
+
+Draft generation in v1 may use a **heuristic** step list when not calling an LLM; switch the adapter to `cursor` for real CLI runs.
 
 ## Verify
 
