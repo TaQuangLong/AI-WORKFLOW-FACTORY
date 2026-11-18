@@ -7,18 +7,8 @@ import type {
   DraftWorkflowInput,
   DraftWorkflowResult,
 } from "./types.js";
-
-function draftPrompt(goal: string): string {
-  return [
-    "You are drafting a Workflow for AI Workflow Factory.",
-    "Reply with ONLY a fenced json code block containing a Workflow object.",
-    "Schema: { id: string, goal: string, updatedAt: ISO string, steps: [{ id, title, skillId, ticked: true, status: \"pending\", prompt?: string }] }",
-    "Every step MUST have ticked: true and status: \"pending\". Do not emit ignored or unticked steps — the developer Ignores in the UI after draft.",
-    "Each step must align to a Skill id (folder name with SKILL.md).",
-    "Do not run any tools. Do not start implementation. Draft only.",
-    `Goal: ${goal}`,
-  ].join("\n");
-}
+import { cursorDraftArgs, draftPrompt } from "./draft-prompt.js";
+import { spawnDraftCli } from "./spawn-draft.js";
 
 /**
  * Spawns Cursor agent CLI when available.
@@ -28,7 +18,6 @@ function draftPrompt(goal: string): string {
 export class CursorAdapter implements CliAdapter {
   readonly id = "cursor" as const;
   private runChild: ChildProcess | null = null;
-  private draftChild: ChildProcess | null = null;
 
   async start(
     input: AdapterStartInput,
@@ -82,46 +71,12 @@ export class CursorAdapter implements CliAdapter {
   async draftWorkflow(input: DraftWorkflowInput): Promise<DraftWorkflowResult> {
     const bin = process.env.AWF_CURSOR_BIN ?? "cursor";
     const prompt = draftPrompt(input.goal);
-    const args = [
-      "agent",
-      "--print",
-      "--trust",
-      "--workspace",
-      input.projectRoot,
-      prompt,
-    ];
-
-    return new Promise<DraftWorkflowResult>((resolve, reject) => {
-      const chunks: Buffer[] = [];
-      const child = spawn(bin, args, {
-        cwd: input.projectRoot,
-        env: process.env,
-        stdio: ["ignore", "pipe", "pipe"],
-        detached: process.platform !== "win32",
-      });
-      this.draftChild = child;
-
-      child.stdout?.on("data", (buf: Buffer) => chunks.push(buf));
-      child.stderr?.on("data", (buf: Buffer) => chunks.push(buf));
-
-      child.on("error", (err) => {
-        this.draftChild = null;
-        reject(err);
-      });
-
-      child.on("close", (code) => {
-        this.draftChild = null;
-        const text = Buffer.concat(chunks).toString("utf8");
-        if (code !== 0 && !text.includes("{")) {
-          reject(
-            new Error(
-              `Cursor draft exited ${code}: ${text.slice(0, 400) || "(empty)"}`,
-            ),
-          );
-          return;
-        }
-        resolve({ text });
-      });
+    const args = cursorDraftArgs(input.projectRoot, prompt);
+    return spawnDraftCli({
+      bin,
+      args,
+      cwd: input.projectRoot,
+      label: "Cursor",
     });
   }
 

@@ -7,6 +7,10 @@ import type {
   DraftWorkflowResult,
 } from "./types.js";
 
+/**
+ * Legacy stub adapters kept for Seam B assertions that import from stubs.js.
+ * Production createAdapter() uses codex.ts / claude.ts (real draftWorkflow).
+ */
 abstract class StubAdapter implements CliAdapter {
   abstract readonly id: "codex" | "claude";
 

@@ -19,7 +19,9 @@ Prefer **`pnpm open:visualizer`** from the Project Root you want bound: starts s
 
 Optional Cursor/VS Code command **Workflow Visualizer: Open** (local extension under `extensions/visualizer-launcher`) opens Simple Browser to that URL when the UI is already up — it does not start processes. See `extensions/visualizer-launcher/README.md`.
 
-Chat drafting calls the selected Adapter’s `draftWorkflow` (Cursor by default; Fake in CI). The CLI must return a fenced JSON Workflow. If that fails, a **labeled heuristic fallback** is used (shown in Chat and the UI header) — never silently presented as Cursor-drafted.
+Chat drafting calls the selected Adapter’s `draftWorkflow` (Cursor by default; also Codex and Claude; Fake in CI). The CLI must return a fenced JSON Workflow. If that fails, a **labeled heuristic fallback** is used (shown in Chat and the UI header) — never silently presented as Cursor-drafted.
+
+Binary overrides: `AWF_CURSOR_BIN`, `AWF_CODEX_BIN`, `AWF_CLAUDE_BIN`. Codex/Claude **Run** (`start`) is still a stub this ship — use Cursor or Fake to execute Steps.
 
 ## Verify
 
@@ -40,4 +42,4 @@ Under the Project Root:
 
 ## Spec / intent
 
-See `intent/workflow-visualizer/`, `intent/run-history/`, `intent/visualizer-launcher/`, and GitHub issues.
+See `intent/workflow-visualizer/`, `intent/run-history/`, `intent/visualizer-launcher/`, `intent/multi-cli-draft/`, and GitHub issues.
