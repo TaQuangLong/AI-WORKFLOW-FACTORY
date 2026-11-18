@@ -37,6 +37,7 @@ export class CursorAdapter implements CliAdapter {
     const args = [
       "agent",
       "--print",
+      "--trust",
       "--workspace",
       input.projectRoot,
       input.prompt,
@@ -80,7 +81,14 @@ export class CursorAdapter implements CliAdapter {
   async draftWorkflow(input: DraftWorkflowInput): Promise<DraftWorkflowResult> {
     const bin = process.env.AWF_CURSOR_BIN ?? "cursor";
     const prompt = draftPrompt(input.goal);
-    const args = ["agent", "--print", "--workspace", input.projectRoot, prompt];
+    const args = [
+      "agent",
+      "--print",
+      "--trust",
+      "--workspace",
+      input.projectRoot,
+      prompt,
+    ];
 
     return new Promise<DraftWorkflowResult>((resolve, reject) => {
       const chunks: Buffer[] = [];
