@@ -9,3 +9,6 @@ coverage
 apps/web/dist
 apps/web/.vite
 apps/server/dist
+extensions/*/out
+extensions/*/node_modules
+*.vsix

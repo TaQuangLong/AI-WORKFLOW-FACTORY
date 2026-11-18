@@ -67,3 +67,7 @@ _Avoid_: Archive, session log, run log (alone)
 **History Entry**:
 One Workflow snapshot persisted when a Run leaves `running` (`{ savedAt, workflow }` as a JSON file).
 _Avoid_: Archive record, session, checkpoint
+
+**Launcher**:
+The thin editor command (and optional repo helper) that opens the localhost Visualizer UI; the extension does not own Run semantics.
+_Avoid_: Host, embed, sidecar (when meaning this open helper)

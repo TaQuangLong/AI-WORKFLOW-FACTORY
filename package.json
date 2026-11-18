@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "pnpm --parallel --filter @awf/server --filter @awf/web dev",
     "start:server": "pnpm --filter @awf/server exec tsx src/cli.ts",
+    "open:visualizer": "node scripts/open-visualizer.mjs",
     "build": "pnpm -r run build",
-    "test": "pnpm -r run test",
+    "test": "pnpm -r run test && vitest run --config scripts/vitest.config.ts",
     "typecheck": "pnpm -r run typecheck",
     "lint": "pnpm -r run lint --if-present"
   },

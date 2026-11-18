@@ -15,6 +15,10 @@ Open **http://127.0.0.1:5173** (Vite binds IPv4).
 
 Or both: `pnpm dev` (server defaults to cwd; pick adapter via `AWF_ADAPTER` / `--adapter`).
 
+Prefer **`pnpm open:visualizer`** from the Project Root you want bound: starts server (`--project` = cwd) + web if needed, then prints `http://127.0.0.1:5173`. Adapter via `AWF_ADAPTER` (default `fake`).
+
+Optional Cursor/VS Code command **Workflow Visualizer: Open** (local extension under `extensions/visualizer-launcher`) opens Simple Browser to that URL when the UI is already up — it does not start processes. See `extensions/visualizer-launcher/README.md`.
+
 Chat drafting calls the selected Adapter’s `draftWorkflow` (Cursor by default; Fake in CI). The CLI must return a fenced JSON Workflow. If that fails, a **labeled heuristic fallback** is used (shown in Chat and the UI header) — never silently presented as Cursor-drafted.
 
 ## Verify
@@ -36,4 +40,4 @@ Under the Project Root:
 
 ## Spec / intent
 
-See `intent/workflow-visualizer/`, `intent/run-history/`, and GitHub issues.
+See `intent/workflow-visualizer/`, `intent/run-history/`, `intent/visualizer-launcher/`, and GitHub issues.

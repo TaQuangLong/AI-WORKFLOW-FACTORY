@@ -1,0 +1,34 @@
+{
+  "name": "awf-visualizer-launcher",
+  "displayName": "Workflow Visualizer Launcher",
+  "description": "Open the localhost Workflow Visualizer in Simple Browser when it is already running.",
+  "version": "0.1.0",
+  "publisher": "ai-workflow-factory",
+  "private": true,
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onCommand:awf.visualizer.open"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "awf.visualizer.open",
+        "title": "Workflow Visualizer: Open"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "echo 'no extension unit tests'",
+    "vscode:prepublish": "pnpm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.7.3"
+  }
+}
