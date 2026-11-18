@@ -1,6 +1,9 @@
 import { WorkflowSchema, type Workflow } from "./schema.js";
 
-/** Extract fenced ```json ... ``` or first `{...}` object, then Zod-parse as Workflow. */
+/**
+ * Extract fenced ```json ... ``` or first `{...}` object, then Zod-parse as Workflow.
+ * Adapter drafts default to included Steps (ticked + pending); Ignore is a UI action.
+ */
 export function parseWorkflowJsonFromText(text: string): Workflow {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = fenced?.[1]?.trim() ?? extractBalancedObject(text);
@@ -13,7 +16,15 @@ export function parseWorkflowJsonFromText(text: string): Workflow {
   } catch {
     throw new Error("Adapter draft JSON failed to parse");
   }
-  return WorkflowSchema.parse(raw);
+  const parsed = WorkflowSchema.parse(raw);
+  return {
+    ...parsed,
+    steps: parsed.steps.map((s) => ({
+      ...s,
+      ticked: true,
+      status: s.status === "blocked" ? "blocked" : "pending",
+    })),
+  };
 }
 
 function extractBalancedObject(text: string): string | null {

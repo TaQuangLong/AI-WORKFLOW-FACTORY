@@ -12,7 +12,8 @@ function draftPrompt(goal: string): string {
   return [
     "You are drafting a Workflow for AI Workflow Factory.",
     "Reply with ONLY a fenced json code block containing a Workflow object.",
-    "Schema: { id: string, goal: string, updatedAt: ISO string, steps: [{ id, title, skillId, ticked: boolean, status: \"pending\", prompt?: string }] }",
+    "Schema: { id: string, goal: string, updatedAt: ISO string, steps: [{ id, title, skillId, ticked: true, status: \"pending\", prompt?: string }] }",
+    "Every step MUST have ticked: true and status: \"pending\". Do not emit ignored or unticked steps — the developer Ignores in the UI after draft.",
     "Each step must align to a Skill id (folder name with SKILL.md).",
     "Do not run any tools. Do not start implementation. Draft only.",
     `Goal: ${goal}`,
