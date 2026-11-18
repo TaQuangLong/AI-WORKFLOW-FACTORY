@@ -29,6 +29,14 @@ export const WorkflowSchema = z.object({
 });
 export type Workflow = z.infer<typeof WorkflowSchema>;
 
+/** Persisted Run snapshot under `.workflow/history/` (id = filename). */
+export const HistoryEntrySchema = z.object({
+  id: z.string().min(1),
+  savedAt: z.string(),
+  workflow: WorkflowSchema,
+});
+export type HistoryEntry = z.infer<typeof HistoryEntrySchema>;
+
 export const ChatMessageSchema = z.object({
   id: z.string(),
   role: z.enum(["system", "assistant", "user"]),

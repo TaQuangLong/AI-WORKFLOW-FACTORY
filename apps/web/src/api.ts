@@ -1,4 +1,4 @@
-import type { Snapshot, Workflow } from "./types";
+import type { HistoryEntry, Snapshot, Workflow } from "./types";
 
 export async function fetchSnapshot(): Promise<Snapshot> {
   const res = await fetch("/api/snapshot");
@@ -58,6 +58,23 @@ export async function setAdapter(adapterId: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ adapterId }),
   });
+}
+
+export async function fetchHistory(): Promise<HistoryEntry[]> {
+  const res = await fetch("/api/history");
+  if (!res.ok) throw new Error(await res.text());
+  const data = (await res.json()) as { entries: HistoryEntry[] };
+  return data.entries;
+}
+
+export async function loadHistoryAsDraft(id: string): Promise<Workflow> {
+  const res = await fetch(
+    `/api/history/${encodeURIComponent(id)}/load-as-draft`,
+    { method: "POST" },
+  );
+  if (!res.ok) throw new Error(await res.text());
+  const data = (await res.json()) as { draft: Workflow };
+  return data.draft;
 }
 
 export async function createSkill(

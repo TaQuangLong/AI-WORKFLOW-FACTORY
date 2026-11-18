@@ -122,6 +122,31 @@ export function createServer(runtime: WorkflowRuntime, port: number) {
         return;
       }
 
+      if (req.method === "GET" && path === "/api/history") {
+        send(res, 200, { entries: await runtime.listHistory() });
+        return;
+      }
+
+      const historyOne = path.match(/^\/api\/history\/([^/]+)$/);
+      if (req.method === "GET" && historyOne) {
+        const id = decodeURIComponent(historyOne[1]!);
+        const entry = await runtime.getHistory(id);
+        if (!entry) {
+          send(res, 404, { error: "History Entry not found" });
+          return;
+        }
+        send(res, 200, { entry });
+        return;
+      }
+
+      const historyLoad = path.match(/^\/api\/history\/([^/]+)\/load-as-draft$/);
+      if (req.method === "POST" && historyLoad) {
+        const id = decodeURIComponent(historyLoad[1]!);
+        const draft = await runtime.loadHistoryAsDraft(id);
+        send(res, 200, { draft });
+        return;
+      }
+
       send(res, 404, { error: "not found" });
     } catch (err) {
       send(res, 400, {

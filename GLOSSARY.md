@@ -59,3 +59,11 @@ _Avoid_: Conversation, thread (alone)
 **Project Root**:
 The single local directory the server is bound to; `.workflow/` and Skill lookups are resolved from here.
 _Avoid_: Workspace (unless meaning the editor workspace that happens to match), repo (when meaning the bound path)
+
+**History**:
+The newest-first list of past Run snapshots under `.workflow/history/`, shown in the Visualizer for inspect and Load as Draft.
+_Avoid_: Archive, session log, run log (alone)
+
+**History Entry**:
+One Workflow snapshot persisted when a Run leaves `running` (`{ savedAt, workflow }` as a JSON file).
+_Avoid_: Archive record, session, checkpoint

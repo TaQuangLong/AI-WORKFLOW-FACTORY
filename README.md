@@ -32,7 +32,8 @@ Under the Project Root:
 - `.workflow/current.json` — accepted Workflow
 - `.workflow/chat.json` — Chat
 - `.workflow/docs/` — Markdown artifacts (`workflow.md`)
+- `.workflow/history/` — History Entries (Workflow snapshots at Run end)
 
 ## Spec / intent
 
-See `intent/workflow-visualizer/` and GitHub issue #1.
+See `intent/workflow-visualizer/`, `intent/run-history/`, and GitHub issues.

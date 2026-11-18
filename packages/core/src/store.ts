@@ -1,9 +1,11 @@
-import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
+import { mkdir, readFile, writeFile, rename, readdir } from "node:fs/promises";
 import path from "node:path";
 import {
   ChatMessageSchema,
+  HistoryEntrySchema,
   WorkflowSchema,
   type ChatMessage,
+  type HistoryEntry,
   type Step,
   type Workflow,
 } from "./schema.js";
@@ -19,6 +21,20 @@ export function workflowDir(projectRoot: string): string {
 
 export function docsDir(projectRoot: string): string {
   return path.join(workflowDir(projectRoot), "docs");
+}
+
+export function historyDir(projectRoot: string): string {
+  return path.join(workflowDir(projectRoot), "history");
+}
+
+function sanitizeWorkflowId(id: string): string {
+  return id.replace(/[^a-zA-Z0-9._-]/g, "_") || "workflow";
+}
+
+/** ISO timestamp safe for filenames (colons → dashes). */
+export function historyEntryFilename(savedAt: string, workflowId: string): string {
+  const ts = savedAt.replace(/:/g, "-");
+  return `${ts}_${sanitizeWorkflowId(workflowId)}.json`;
 }
 
 async function ensureDirs(projectRoot: string): Promise<void> {
@@ -63,8 +79,68 @@ export class WorkflowStore {
     return path.join(workflowDir(this.projectRoot), "chat.json");
   }
 
+  historyPath(id: string): string {
+    const safe = path.basename(id);
+    return path.join(historyDir(this.projectRoot), safe);
+  }
+
   async init(): Promise<void> {
     await ensureDirs(this.projectRoot);
+  }
+
+  /** Persist a History Entry from the current Workflow snapshot. */
+  async saveHistoryEntry(workflow: Workflow): Promise<HistoryEntry> {
+    await this.init();
+    const savedAt = new Date().toISOString();
+    let id = historyEntryFilename(savedAt, workflow.id);
+    let dest = this.historyPath(id);
+    // Extremely rare same-ms collision
+    try {
+      await readFile(dest);
+      id = historyEntryFilename(savedAt, `${workflow.id}_${process.pid}`);
+      dest = this.historyPath(id);
+    } catch {
+      /* free */
+    }
+    const entry = HistoryEntrySchema.parse({ id, savedAt, workflow });
+    await atomicWrite(dest, JSON.stringify({ savedAt, workflow: entry.workflow }, null, 2));
+    return entry;
+  }
+
+  /** Newest-first; skips corrupt/unreadable files. */
+  async listHistoryEntries(): Promise<HistoryEntry[]> {
+    await this.init();
+    const dir = historyDir(this.projectRoot);
+    let names: string[] = [];
+    try {
+      names = (await readdir(dir)).filter((n) => n.endsWith(".json"));
+    } catch {
+      return [];
+    }
+    const entries: HistoryEntry[] = [];
+    for (const name of names) {
+      const loaded = await this.loadHistoryEntry(name);
+      if (loaded) entries.push(loaded);
+    }
+    entries.sort((a, b) => (a.savedAt < b.savedAt ? 1 : a.savedAt > b.savedAt ? -1 : 0));
+    return entries;
+  }
+
+  async loadHistoryEntry(id: string): Promise<HistoryEntry | null> {
+    const filePath = this.historyPath(id);
+    try {
+      const raw = JSON.parse(await readFile(filePath, "utf8")) as unknown;
+      const obj = raw as { savedAt?: string; workflow?: unknown; id?: string };
+      return HistoryEntrySchema.parse({
+        id: path.basename(id),
+        savedAt: obj.savedAt,
+        workflow: obj.workflow,
+      });
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+      // Corrupt / invalid — skip
+      return null;
+    }
   }
 
   async loadDraft(): Promise<Workflow | null> {

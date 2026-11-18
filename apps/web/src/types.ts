@@ -39,3 +39,9 @@ export interface Snapshot {
   run: { state: string; activeStepId: string | null };
   draftSource?: "adapter" | "heuristic" | null;
 }
+
+export interface HistoryEntry {
+  id: string;
+  savedAt: string;
+  workflow: Workflow;
+}

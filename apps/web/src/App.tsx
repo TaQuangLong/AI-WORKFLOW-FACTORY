@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import * as api from "./api";
-import type { ChatMessage, Snapshot, Step, Workflow } from "./types";
+import type { ChatMessage, HistoryEntry, Snapshot, Step, Workflow } from "./types";
 
 function newStep(): Step {
   return {
@@ -23,6 +23,10 @@ export function App() {
     skillId: "",
     description: "",
   });
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(
+    null,
+  );
 
   const refresh = useCallback(async () => {
     const s = await api.fetchSnapshot();
@@ -31,8 +35,17 @@ export function App() {
     setChat(s.chat);
   }, []);
 
+  const refreshHistory = useCallback(async () => {
+    try {
+      setHistory(await api.fetchHistory());
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
     void refresh();
+    void refreshHistory();
     return api.connectEvents((raw) => {
       const e = raw as {
         type: string;
@@ -57,12 +70,19 @@ export function App() {
       }
       if (e.type === "log" && e.line) {
         setLogs((l) => [...l.slice(-200), `[${e.stream}] ${e.line}`]);
+        if (e.line.includes("History Entry saved")) void refreshHistory();
       }
       if (e.type === "run") {
         void refresh();
+        if (e.state === "idle" || e.state === "stopped") void refreshHistory();
       }
     });
-  }, [refresh]);
+  }, [refresh, refreshHistory]);
+
+  const selectedHistory = useMemo(
+    () => history.find((h) => h.id === selectedHistoryId) ?? null,
+    [history, selectedHistoryId],
+  );
 
   const viewWorkflow = draft ?? snap?.current ?? null;
 
@@ -131,6 +151,22 @@ export function App() {
         skillForm.description.trim() || skillForm.skillId.trim(),
       );
       setSkillForm({ skillId: "", description: "" });
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onLoadHistoryAsDraft(entry: HistoryEntry) {
+    if (draft) {
+      const ok = window.confirm(
+        "Replace the current Draft with this History Entry? Accept Draft is still required before Run.",
+      );
+      if (!ok) return;
+    }
+    setBusy(true);
+    try {
+      await api.loadHistoryAsDraft(entry.id);
       await refresh();
     } finally {
       setBusy(false);
@@ -328,6 +364,69 @@ export function App() {
           ) : (
             logs.map((l, i) => <div key={i}>{l}</div>)
           )}
+        </div>
+      </section>
+
+      <section className="panel history-panel">
+        <h2>History</h2>
+        <p className="hint">
+          Past Run snapshots under <code>.workflow/history/</code>. Load as Draft
+          to edit; Accept before Run. Chat is unchanged.
+        </p>
+        <div className="history-layout">
+          <div className="history-list">
+            {history.length === 0 && (
+              <p className="hint">No History Entries yet — Run a Workflow first.</p>
+            )}
+            {history.map((h) => (
+              <button
+                key={h.id}
+                type="button"
+                className={
+                  selectedHistoryId === h.id ? "history-item active" : "history-item"
+                }
+                onClick={() => setSelectedHistoryId(h.id)}
+              >
+                <span className="history-time">{h.savedAt}</span>
+                <span className="history-goal">{h.workflow.goal}</span>
+                <span className="history-meta">
+                  {h.workflow.steps.filter((s) => s.status === "succeeded").length}/
+                  {h.workflow.steps.length} succeeded
+                </span>
+              </button>
+            ))}
+          </div>
+          <div className="history-detail">
+            {!selectedHistory && (
+              <p className="hint">Select a History Entry to inspect.</p>
+            )}
+            {selectedHistory && (
+              <>
+                <div className="controls">
+                  <button
+                    className="primary"
+                    disabled={busy}
+                    onClick={() => void onLoadHistoryAsDraft(selectedHistory)}
+                  >
+                    Load as Draft
+                  </button>
+                </div>
+                <div className="step-list">
+                  {selectedHistory.workflow.steps.map((s) => (
+                    <div key={s.id} className="step">
+                      <div className="step-head">
+                        <strong>{s.title}</strong>
+                        <span className={`status ${s.status}`}>{s.status}</span>
+                      </div>
+                      <div className="step-meta">
+                        <span className="hint">{s.skillId}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </section>
     </div>

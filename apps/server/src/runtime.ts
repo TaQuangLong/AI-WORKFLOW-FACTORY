@@ -5,6 +5,7 @@ import {
   parseWorkflowJsonFromText,
   updateStep,
   type ChatMessage,
+  type HistoryEntry,
   type Step,
   type Workflow,
   type WorkflowEvent,
@@ -218,6 +219,48 @@ export class WorkflowRuntime {
     return saved;
   }
 
+  /** Snapshot current Workflow into History when a Run segment ends. */
+  private async recordHistoryEntry(): Promise<HistoryEntry | null> {
+    const current = await this.store.loadCurrent();
+    if (!current) return null;
+    const entry = await this.store.saveHistoryEntry(current);
+    this.emit({
+      type: "log",
+      stream: "system",
+      line: `History Entry saved: ${entry.id}`,
+    });
+    return entry;
+  }
+
+  async listHistory(): Promise<HistoryEntry[]> {
+    return this.store.listHistoryEntries();
+  }
+
+  async getHistory(id: string): Promise<HistoryEntry | null> {
+    return this.store.loadHistoryEntry(id);
+  }
+
+  /** Replace Draft with History Entry workflow. Chat unchanged. */
+  async loadHistoryAsDraft(id: string): Promise<Workflow> {
+    const entry = await this.store.loadHistoryEntry(id);
+    if (!entry) throw new Error(`History Entry not found: ${id}`);
+    const draft: Workflow = {
+      ...entry.workflow,
+      steps: entry.workflow.steps.map((s) => ({
+        ...s,
+        // Editable Draft: reset runnable steps to pending/ignored for re-edit
+        status:
+          s.status === "blocked"
+            ? "blocked"
+            : s.ticked
+              ? "pending"
+              : "ignored",
+      })),
+      updatedAt: new Date().toISOString(),
+    };
+    return this.saveDraft(draft);
+  }
+
   private async runStep(step: Step): Promise<"succeeded" | "failed" | "stopped"> {
     let current = await this.store.loadCurrent();
     if (!current) throw new Error("No accepted Workflow");
@@ -273,21 +316,25 @@ export class WorkflowRuntime {
     let current = await this.store.loadCurrent();
     if (!current) throw new Error("Accept Draft before Run");
 
-    for (;;) {
-      current = (await this.store.loadCurrent())!;
-      const next = current.steps.find(
-        (s) => s.ticked && s.status === "pending",
-      );
-      if (!next) break;
-      if (await this.skills.has(next.skillId) === false) {
-        await this.persistCurrent(
-          updateStep(current, next.id, { status: "blocked" }),
+    try {
+      for (;;) {
+        current = (await this.store.loadCurrent())!;
+        const next = current.steps.find(
+          (s) => s.ticked && s.status === "pending",
         );
-        this.emit({ type: "step", stepId: next.id, status: "blocked" });
-        break;
+        if (!next) break;
+        if ((await this.skills.has(next.skillId)) === false) {
+          await this.persistCurrent(
+            updateStep(current, next.id, { status: "blocked" }),
+          );
+          this.emit({ type: "step", stepId: next.id, status: "blocked" });
+          break;
+        }
+        const outcome = await this.runStep(next);
+        if (outcome !== "succeeded") break;
       }
-      const outcome = await this.runStep(next);
-      if (outcome !== "succeeded") break;
+    } finally {
+      await this.recordHistoryEntry();
     }
   }
 
@@ -313,19 +360,23 @@ export class WorkflowRuntime {
       return;
     }
 
-    for (;;) {
-      current = (await this.store.loadCurrent())!;
-      const step =
-        current.steps.find((s) => s.id === next.id && s.status === "pending") ??
-        current.steps.find((s) => s.ticked && s.status === "pending");
-      if (!step) break;
-      const outcome = await this.runStep(step);
-      if (outcome !== "succeeded") break;
-      // after first continue step, keep going through remaining pending
-      const more = (await this.store.loadCurrent())!.steps.find(
-        (s) => s.ticked && s.status === "pending",
-      );
-      if (!more) break;
+    try {
+      for (;;) {
+        current = (await this.store.loadCurrent())!;
+        const step =
+          current.steps.find((s) => s.id === next.id && s.status === "pending") ??
+          current.steps.find((s) => s.ticked && s.status === "pending");
+        if (!step) break;
+        const outcome = await this.runStep(step);
+        if (outcome !== "succeeded") break;
+        // after first continue step, keep going through remaining pending
+        const more = (await this.store.loadCurrent())!.steps.find(
+          (s) => s.ticked && s.status === "pending",
+        );
+        if (!more) break;
+      }
+    } finally {
+      await this.recordHistoryEntry();
     }
   }
 
@@ -351,6 +402,10 @@ export class WorkflowRuntime {
       stream: "system",
       line: `Re-run ${stepId}: downstream steps were not reset and may be stale.`,
     });
-    await this.runStep({ ...step, status: "pending" });
+    try {
+      await this.runStep({ ...step, status: "pending" });
+    } finally {
+      await this.recordHistoryEntry();
+    }
   }
 }
